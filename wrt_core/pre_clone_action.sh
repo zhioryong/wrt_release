@@ -37,9 +37,13 @@ REPO_BRANCH=${REPO_BRANCH:-main}
 BUILD_DIR="$BASE_PATH/../action_build"
 
 echo $REPO_URL $REPO_BRANCH
-# Write flag one level up from wrt_core (repo root usually)
-echo "$REPO_URL/$REPO_BRANCH" >"$BASE_PATH/../repo_flag"
+if [ -d "$BUILD_DIR" ]; then
+    rm -rf "$BUILD_DIR"
+fi
 git clone --depth 1 -b $REPO_BRANCH $REPO_URL $BUILD_DIR
+
+REPO_HEAD=$(git -C "$BUILD_DIR" rev-parse HEAD)
+echo "$REPO_URL/$REPO_BRANCH/$REPO_HEAD" >"$BASE_PATH/../repo_flag"
 
 # GitHub Action 移除国内下载源
 PROJECT_MIRRORS_FILE="$BUILD_DIR/scripts/projectsmirrors.json"
