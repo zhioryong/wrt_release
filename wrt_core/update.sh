@@ -88,7 +88,7 @@ main() {
     remove_attendedsysupgrade
     fix_kconfig_recursive_dependency
     install_feeds
-    if [ "${DOCKER_STACK_ENABLED:-1}" = "1" ]; then
+    if [ "${DOCKER_STACK_ENABLED:-0}" = "1" ]; then
         if [ -f "$BUILD_DIR/feeds/packages/utils/docker/Makefile" ] || [ -f "$BUILD_DIR/package/feeds/packages/docker/Makefile" ]; then
             update_docker_stack
         fi

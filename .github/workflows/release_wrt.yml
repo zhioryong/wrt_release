@@ -11,6 +11,11 @@ on:
         default: jdcloud_ipq60xx_immwrt
         options:
           - jdcloud_ipq60xx_immwrt
+      with_docker:
+        required: true
+        description: Include Docker in firmware
+        type: boolean
+        default: true
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -93,7 +98,7 @@ jobs:
           echo "=================================================="
 
       - name: Build Firmware
-        run: ./build.sh ${{ inputs.model }}
+        run: ./build.sh ${{ inputs.model }} ${{ inputs.with_docker && '--with-docker' || '--without-docker' }}
 
       - name: Get Kernel Verion
         run: |

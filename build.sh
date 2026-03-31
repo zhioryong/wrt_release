@@ -16,6 +16,18 @@ BASE_PATH=$(cd "$WRT_CORE_PATH" && pwd)
 
 Dev=$1
 Build_Mod=$2
+DOCKER_MODE=""
+
+for arg in "$@"; do
+    case "$arg" in
+        --with-docker)
+            DOCKER_MODE="1"
+            ;;
+        --without-docker|--no-docker)
+            DOCKER_MODE="0"
+            ;;
+    esac
+done
 
 SUPPORTED_DEVS=()
 
@@ -43,7 +55,7 @@ collect_supported_devs() {
 }
 
 print_usage() {
-    echo "Usage: $0 <device> [debug]"
+    echo "Usage: $0 <device> [debug] [--with-docker|--without-docker]"
 }
 
 print_supported_devs() {
@@ -163,6 +175,58 @@ read_ini_by_key() {
     awk -F"=" -v key="$key" '$1 == key {print $2}' "$INI_FILE"
 }
 
+detect_docker_stack_enabled() {
+    if [ "$DOCKER_MODE" = "1" ]; then
+        echo "1"
+        return 0
+    fi
+    if [ "$DOCKER_MODE" = "0" ]; then
+        echo "0"
+        return 0
+    fi
+    if [ -n "${DOCKER_STACK_ENABLED:-}" ]; then
+        echo "$DOCKER_STACK_ENABLED"
+        return 0
+    fi
+    if grep -Eq '^CONFIG_PACKAGE_(dockerd|docker|containerd|runc|luci-app-dockerman)=y$' "$CONFIG_FILE"; then
+        echo "1"
+        return 0
+    fi
+    echo "0"
+}
+
+apply_docker_mode_to_config() {
+    local config_path="$1"
+    local pkg
+    local pkgs=(
+        "docker"
+        "dockerd"
+        "containerd"
+        "runc"
+        "tini"
+        "luci-app-dockerman"
+        "luci-i18n-dockerman-zh-cn"
+    )
+
+    [ -n "$DOCKER_MODE" ] || return 0
+
+    for pkg in "${pkgs[@]}"; do
+        sed -i "/^CONFIG_PACKAGE_${pkg}=/d" "$config_path"
+        sed -i "/^# CONFIG_PACKAGE_${pkg} is not set$/d" "$config_path"
+    done
+
+    if [ "$DOCKER_MODE" = "0" ]; then
+        for pkg in "${pkgs[@]}"; do
+            echo "# CONFIG_PACKAGE_${pkg} is not set" >> "$config_path"
+        done
+        return 0
+    fi
+
+    for pkg in "${pkgs[@]}"; do
+        echo "CONFIG_PACKAGE_${pkg}=y" >> "$config_path"
+    done
+}
+
 remove_uhttpd_dependency() {
     local config_path="$BASE_PATH/../$BUILD_DIR/.config"
     local luci_makefile_path="$BASE_PATH/../$BUILD_DIR/feeds/luci/collections/luci/Makefile"
@@ -185,7 +249,7 @@ apply_config() {
 
     cat "$BASE_PATH/deconfig/compile_base.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
 
-    if [ "${DOCKER_STACK_ENABLED:-1}" = "1" ]; then
+    if [ "${DOCKER_STACK_ENABLED:-0}" = "1" ]; then
         if [ -f "$BASE_PATH/../$BUILD_DIR/feeds/packages/utils/docker/Makefile" ] || [ -f "$BASE_PATH/../$BUILD_DIR/package/feeds/packages/docker/Makefile" ]; then
             cat "$BASE_PATH/deconfig/docker_deps.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
         fi
@@ -205,9 +269,13 @@ if [[ -d action_build ]]; then
     BUILD_DIR="action_build"
 fi
 
+DOCKER_STACK_ENABLED=$(detect_docker_stack_enabled)
+export DOCKER_STACK_ENABLED
+
 "$BASE_PATH/update.sh" "$REPO_URL" "$REPO_BRANCH" "$BUILD_DIR" "$COMMIT_HASH"
 
 apply_config
+apply_docker_mode_to_config "$BASE_PATH/../$BUILD_DIR/.config"
 remove_uhttpd_dependency
 
 cd "$BASE_PATH/../$BUILD_DIR"
