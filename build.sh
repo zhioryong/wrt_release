@@ -185,7 +185,11 @@ apply_config() {
 
     cat "$BASE_PATH/deconfig/compile_base.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
 
-    cat "$BASE_PATH/deconfig/docker_deps.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+    if [ "${DOCKER_STACK_ENABLED:-1}" = "1" ]; then
+        if [ -f "$BASE_PATH/../$BUILD_DIR/feeds/packages/utils/docker/Makefile" ] || [ -f "$BASE_PATH/../$BUILD_DIR/package/feeds/packages/docker/Makefile" ]; then
+            cat "$BASE_PATH/deconfig/docker_deps.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+        fi
+    fi
 
     cat "$BASE_PATH/deconfig/proxy.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
 }

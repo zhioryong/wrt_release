@@ -88,7 +88,11 @@ main() {
     remove_attendedsysupgrade
     fix_kconfig_recursive_dependency
     install_feeds
-    update_docker_stack
+    if [ "${DOCKER_STACK_ENABLED:-1}" = "1" ]; then
+        if [ -f "$BUILD_DIR/feeds/packages/utils/docker/Makefile" ] || [ -f "$BUILD_DIR/package/feeds/packages/docker/Makefile" ]; then
+            update_docker_stack
+        fi
+    fi
     fix_cups_libcups_avahi_depends
     fix_easytier_lua
     update_adguardhome
